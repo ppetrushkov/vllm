@@ -2871,6 +2871,10 @@ class LoRAConfig:
     allowed."""
     bias_enabled: bool = False
     """Enable bias for LoRA adapters."""
+    adapter_type: Literal["lora", "road"] = "lora"
+    """Type of adapter to use."""
+    road_group_size: int = 64
+    """Group size for RoAd adapters. Adapters with different group size cannot be loaded."""
 
     def compute_hash(self) -> str:
         """
@@ -2918,6 +2922,10 @@ class LoRAConfig:
             raise ValueError(
                 f"max_cpu_loras ({self.max_cpu_loras}) must be >= "
                 f"max_loras ({self.max_loras})")
+        if self.adapter_type == "road":
+            if self.lora_extra_vocab_size != 0:
+                logger.warning("lora_extra_vocab_size is set to 0 for RoAd adapters. ")
+            self.lora_extra_vocab_size = 0
 
     def verify_with_cache_config(self, cache_config: CacheConfig):
         if cache_config.cpu_offload_gb > 0 and not envs.VLLM_USE_V1:

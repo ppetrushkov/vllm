@@ -395,6 +395,13 @@ class Platform:
         raise NotImplementedError
 
     @classmethod
+    def get_road_wrapper(cls) -> str:
+        """
+        Return the road wrapper for current platform.
+        """
+        raise NotImplementedError
+
+    @classmethod
     def get_infinity_values(cls, dtype: torch.dtype) -> tuple[float, float]:
         """
         Return the platform specific values for (-inf, inf)

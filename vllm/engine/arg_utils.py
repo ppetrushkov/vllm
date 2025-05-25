@@ -363,6 +363,7 @@ class EngineArgs:
     lora_extra_vocab_size: int = LoRAConfig.lora_extra_vocab_size
     long_lora_scaling_factors: Optional[tuple[float, ...]] = \
         LoRAConfig.long_lora_scaling_factors
+    adapter_type: Optional[str] = LoRAConfig.adapter_type
     # PromptAdapter fields
     enable_prompt_adapter: bool = False
     max_prompt_adapters: int = PromptAdapterConfig.max_prompt_adapters
@@ -745,6 +746,8 @@ class EngineArgs:
                                 **lora_kwargs["max_cpu_loras"])
         lora_group.add_argument("--fully-sharded-loras",
                                 **lora_kwargs["fully_sharded_loras"])
+        lora_group.add_argument("--adapter-type",
+                                **lora_kwargs["adapter_type"])
 
         # PromptAdapter related configs
         prompt_adapter_kwargs = get_kwargs(PromptAdapterConfig)
@@ -1193,7 +1196,8 @@ class EngineArgs:
             long_lora_scaling_factors=self.long_lora_scaling_factors,
             lora_dtype=self.lora_dtype,
             max_cpu_loras=self.max_cpu_loras if self.max_cpu_loras
-            and self.max_cpu_loras > 0 else None) if self.enable_lora else None
+            and self.max_cpu_loras > 0 else None,
+            adapter_type=self.adapter_type) if self.enable_lora else None
 
         # bitsandbytes pre-quantized model need a specific model loader
         if model_config.quantization == "bitsandbytes":

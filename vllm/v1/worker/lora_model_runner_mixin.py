@@ -14,6 +14,7 @@ from vllm.logger import init_logger
 from vllm.lora.layers import LoRAMapping
 from vllm.lora.request import LoRARequest
 from vllm.lora.worker_manager import LRUCacheWorkerLoRAManager
+from vllm.road.worker_manager import LRUCacheWorkerRoadManager
 from vllm.model_executor.models import supports_lora, supports_multimodal
 from vllm.v1.worker.gpu_input_batch import InputBatch
 
@@ -41,17 +42,30 @@ class LoRAModelRunnerMixin:
         text_config = model_config.hf_config.get_text_config()
 
         # Add LoRA Manager to the Model Runner
-        self.lora_manager = LRUCacheWorkerLoRAManager(
-            scheduler_config.max_num_seqs,
-            scheduler_config.max_num_batched_tokens,
-            model_config.get_vocab_size(),
-            lora_config,
-            device,
-            model.embedding_modules,
-            model.embedding_padding_modules,
-            max_position_embeddings=text_config.max_position_embeddings,
-        )
-        return self.lora_manager.create_lora_manager(model)
+        if lora_config.adapter_type == "lora":
+            self.lora_manager = LRUCacheWorkerLoRAManager(
+                scheduler_config.max_num_seqs,
+                scheduler_config.max_num_batched_tokens,
+                model_config.get_vocab_size(),
+                lora_config,
+                device,
+                model.embedding_modules,
+                model.embedding_padding_modules,
+                max_position_embeddings=text_config.max_position_embeddings,
+            )
+            return self.lora_manager.create_lora_manager(model)
+        elif lora_config.adapter_type == "road":
+            self.lora_manager = LRUCacheWorkerRoadManager(
+                scheduler_config.max_num_seqs,
+                scheduler_config.max_num_batched_tokens,
+                model_config.get_vocab_size(),
+                lora_config,
+                device,
+                model.embedding_modules,
+                model.embedding_padding_modules,
+                max_position_embeddings=text_config.max_position_embeddings,
+            )
+            return self.lora_manager.create_adapter_manager(model)
 
     def _set_active_loras(self, prompt_lora_mapping: tuple[int, ...],
                           token_lora_mapping: tuple[int, ...],
@@ -102,8 +116,12 @@ class LoRAModelRunnerMixin:
                 # Add the dummy LoRAs here so _set_active_loras doesn't try to
                 # load from disk.
                 for lr in lora_requests:
-                    self.lora_manager.add_dummy_lora(
-                        lr, rank=self.LORA_WARMUP_RANK)
+                    if lora_config.adapter_type == "lora":
+                        self.lora_manager.add_dummy_lora(
+                            lr, rank=self.LORA_WARMUP_RANK)
+                    elif lora_config.adapter_type == "road":
+                        self.lora_manager.add_dummy_adapter(
+                            lr)
 
                 yield
 
